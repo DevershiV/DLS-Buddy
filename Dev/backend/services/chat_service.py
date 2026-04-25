@@ -1,8 +1,14 @@
 from sqlalchemy.orm import Session
 from models.chat import Conversation, Message
+from services.llm_service import generate_response
+import asyncio
+import logging
 
+logger = logging.getLogger(__name__)
 
-def handle_chat(db: Session, message: str, conversation_id: int | None):
+logger.info("Processing chat request")
+
+async def handle_chat(db: Session, message: str, conversation_id: int | None):
 
     # Create conversation if needed
     if not conversation_id:
@@ -21,7 +27,9 @@ def handle_chat(db: Session, message: str, conversation_id: int | None):
     db.add(user_msg)
 
     # Generate response (dummy for now)
-    response_text = f"Echo: {message}"
+    logger.info(f"Sending to LLM: {message}")
+    response_text = await asyncio.to_thread(generate_response, message)
+    logger.info(f"LLM response: {response_text}")
 
     # Save assistant message
     bot_msg = Message(

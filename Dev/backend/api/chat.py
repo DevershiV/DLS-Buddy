@@ -3,6 +3,9 @@ from sqlalchemy.orm import Session
 from core.database import SessionLocal
 from schemas.chat import ChatRequest, ChatResponse
 from services.chat_service import handle_chat
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -16,12 +19,18 @@ def get_db():
 
 
 @router.post("/chat", response_model=ChatResponse)
-def chat(request: ChatRequest, db: Session = Depends(get_db)):
-    response, conversation_id = handle_chat(
-        db, request.message, request.conversation_id
-    )
+async def chat(request: ChatRequest, db: Session = Depends(get_db)):
+    logger.info(f"Incoming message: {request.message}")
 
-    return ChatResponse(
-        response=response,
-        conversation_id=conversation_id
-    )
+    try:
+        response, conversation_id = await handle_chat(
+            db, request.message, request.conversation_id
+        )
+        logger.info(f"Response generated for conversation {conversation_id}")
+        return ChatResponse(
+            response=response,
+            conversation_id=conversation_id
+        )
+    except Exception as e:
+        logger.error(f"Chat failed: {str(e)}")
+        raise
