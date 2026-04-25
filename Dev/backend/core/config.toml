@@ -1,0 +1,9 @@
+[app]
+name = "DLS Buddy"
+max_history = 5
+
+[llm]
+model = "llama-3.1-8b-instant"
+
+[database]
+default_url = "postgresql://postgres:War%406ass@localhost:5432/chatbot"

@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from models.chat import Conversation, Message
 from services.llm_service import generate_response
+from core.config import MAX_HISTORY
 import asyncio
 import logging
 
@@ -26,9 +27,19 @@ async def handle_chat(db: Session, message: str, conversation_id: int | None):
     )
     db.add(user_msg)
 
-    # Generate response (dummy for now)
-    logger.info(f"Sending to LLM: {message}")
-    response_text = await asyncio.to_thread(generate_response, message)
+    # Get conversation history
+    history = get_conversation_history(db, conversation_id)
+
+    # add system prompt
+    history.insert(0, {
+        "role": "system",
+        "content": "You are a helpful AI assistant. Keep it concise."
+    })
+    
+    logger.info(f"Sending to LLM: {history}")
+    # Generate response
+    response_text = await asyncio.to_thread(generate_response, history)
+
     logger.info(f"LLM response: {response_text}")
 
     # Save assistant message
@@ -42,3 +53,15 @@ async def handle_chat(db: Session, message: str, conversation_id: int | None):
     db.commit()
 
     return response_text, conversation_id
+
+def get_conversation_history(db, conversation_id):
+    messages = db.query(Message).filter(
+        Message.conversation_id == conversation_id
+    ).order_by(Message.id).all()
+
+    formatted = [
+        {"role": msg.role, "content": msg.content}
+        for msg in messages
+    ]
+
+    return formatted[-MAX_HISTORY:]   #LIMIT HERE
