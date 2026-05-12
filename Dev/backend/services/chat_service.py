@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from models.chat import Conversation, Message
-from services.llm_service import generate_response
+from services.llm_service import run_chain
 from core.config import MAX_HISTORY
 import asyncio
 import logging
@@ -30,15 +30,8 @@ async def handle_chat(db: Session, message: str, conversation_id: int | None):
     # Get conversation history
     history = get_conversation_history(db, conversation_id)
 
-    # add system prompt
-    history.insert(0, {
-        "role": "system",
-        "content": "You are a helpful AI assistant. Keep it concise."
-    })
-    
-    logger.info(f"Sending to LLM: {history}")
     # Generate response
-    response_text = await asyncio.to_thread(generate_response, history)
+    response_text = await asyncio.to_thread(run_chain, history, message)
 
     logger.info(f"LLM response: {response_text}")
 
