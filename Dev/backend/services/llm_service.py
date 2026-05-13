@@ -1,11 +1,15 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
+from services.ingestion_service import search_documents, load_vector_store
 
 from core.config import MODEL_NAME, GROQ_API_KEY
 
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Load Vector Store
+load_vector_store()
 
 # LLM
 llm = ChatGroq(
@@ -17,7 +21,14 @@ llm = ChatGroq(
 prompt = ChatPromptTemplate.from_messages([
     (
         "system",
-        "You are a helpful AI assistant. Keep your answers short and precise"
+        """
+        You are a helpful AI assistant. Keep your answers short and precise.
+
+        Use the provided context to answer.
+
+        Context:
+        {context}
+        """
     ),
     ("placeholder", "{history}"),
     ("human", "{input}")
@@ -34,9 +45,18 @@ def run_chain(history, user_input):
         logger.debug(f"History count: {len(history)}")
         logger.info(f"User input: {user_input}")
 
+        # Retrieve relevant chunks
+        retrieved_chunks = search_documents(user_input)
+
+        # Build context
+        context = "\n\n".join(retrieved_chunks)
+
+        logger.debug(f"Retrieved {len(retrieved_chunks)} chunks")
+
         response = chain.invoke({
             "history": history,
-            "input": user_input
+            "input": user_input,
+            "context": context
         })
 
         logger.info("LLM response generated")
