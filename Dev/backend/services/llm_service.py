@@ -1,8 +1,9 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
-from services.ingestion_service import search_documents, load_vector_store
+from services.retrieval_service import search_documents, load_vector_store
 
 from core.config import MODEL_NAME, GROQ_API_KEY
+from core.prompts import rag_prompt, classification_prompt
 
 import logging
 
@@ -17,25 +18,9 @@ llm = ChatGroq(
     model_name=MODEL_NAME
 )
 
-# Prompt template
-prompt = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        """
-        You are a helpful AI assistant. Keep your answers short and precise.
-
-        Use the provided context to answer.
-
-        Context:
-        {context}
-        """
-    ),
-    ("placeholder", "{history}"),
-    ("human", "{input}")
-])
-
 # LangChain pipeline
-chain = prompt | llm
+rag_chain = rag_prompt | llm
+classification_chain = classification_prompt | llm
 
 
 def run_chain(history, user_input):
@@ -45,15 +30,34 @@ def run_chain(history, user_input):
         logger.debug(f"History count: {len(history)}")
         logger.info(f"User input: {user_input}")
 
+        response = classification_chain.invoke({"query": user_input})
+
+        query_type = (
+            response.content
+            .strip()
+            .lower()
+        )
+        logger.info(f"Query classified as: {query_type}")
+
         # Retrieve relevant chunks
-        retrieved_chunks = search_documents(user_input)
+        retrieved_chunks = search_documents(user_input, query_type)
 
         # Build context
-        context = "\n\n".join(retrieved_chunks)
+        context = "\n\n".join(
+            chunk["content"]
+            for chunk in retrieved_chunks
+        )
+        print(context)
+
+        for chunk in retrieved_chunks:
+            logger.info(
+                f"Retrieved from "
+                f"{chunk['metadata']}"
+            )
 
         logger.debug(f"Retrieved {len(retrieved_chunks)} chunks")
 
-        response = chain.invoke({
+        response = rag_chain.invoke({
             "history": history,
             "input": user_input,
             "context": context

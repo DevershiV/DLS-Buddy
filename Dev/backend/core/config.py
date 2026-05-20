@@ -1,5 +1,8 @@
 import os
 import tomllib
+from dotenv import load_dotenv
+
+load_dotenv()
 
 with open("core/config.toml", "rb") as f:
     config = tomllib.load(f)
