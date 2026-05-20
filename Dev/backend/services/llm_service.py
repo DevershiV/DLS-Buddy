@@ -3,7 +3,7 @@ from langchain_groq import ChatGroq
 from services.retrieval_service import search_documents, load_vector_store
 
 from core.config import MODEL_NAME, GROQ_API_KEY
-from core.prompts import rag_prompt, classification_prompt
+from core.prompts import query_rewrite_prompt, rag_prompt, classification_prompt
 
 import logging
 
@@ -19,9 +19,18 @@ llm = ChatGroq(
 )
 
 # LangChain pipeline
+query_rewrite_chain = query_rewrite_prompt | llm
 rag_chain = rag_prompt | llm
 classification_chain = classification_prompt | llm
 
+def rewrite_query(history,user_input):
+    if not history:
+        return user_input
+
+    response = query_rewrite_chain.invoke({"history": history,"input": user_input})
+    rewritten_query = (response.content.strip())
+
+    return rewritten_query
 
 def run_chain(history, user_input):
     logger.info("Running LangChain pipeline")
@@ -30,7 +39,13 @@ def run_chain(history, user_input):
         logger.debug(f"History count: {len(history)}")
         logger.info(f"User input: {user_input}")
 
-        response = classification_chain.invoke({"query": user_input})
+        # Rewrite user question based on History to tackle follow ups
+        rewritten_query = rewrite_query(history,user_input)
+
+        logger.info(f"Rewritten query: {rewritten_query}")
+
+        # Classify question into either summary or specific
+        response = classification_chain.invoke({"query": rewritten_query})
 
         query_type = (
             response.content
@@ -40,7 +55,7 @@ def run_chain(history, user_input):
         logger.info(f"Query classified as: {query_type}")
 
         # Retrieve relevant chunks
-        retrieved_chunks = search_documents(user_input, query_type)
+        retrieved_chunks = search_documents(rewritten_query, query_type)
 
         # Build context
         context = "\n\n".join(
@@ -59,7 +74,7 @@ def run_chain(history, user_input):
 
         response = rag_chain.invoke({
             "history": history,
-            "input": user_input,
+            "input": rewritten_query,
             "context": context
         })
 
