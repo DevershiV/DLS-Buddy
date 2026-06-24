@@ -1,5 +1,6 @@
 from typing import TypedDict, NotRequired
 from langgraph.graph import StateGraph, END
+from graph.state import GraphState
 from core.config import MODEL_NAME, GROQ_API_KEY
 from core.prompts import query_rewrite_prompt, rag_prompt, classification_prompt
 from services.retrieval_service import search_documents, load_vector_store
@@ -124,7 +125,3 @@ graph = graph_builder.compile()
 # })
 
 # print(result)
-
-#     except Exception as e:
-#         logger.error(f"LangChain pipeline failed: {str(e)}")
-#         raise

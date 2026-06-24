@@ -15,6 +15,7 @@ Rules:
 - Do NOT add new information.
 - If the query is already standalone,
   return it unchanged.
+- Do not change or tamper with the names or values given by the user.
 
 Examples:
 
@@ -25,7 +26,6 @@ Why did he do that?
 
 Rewritten:
 Why did the forest king kill Wenjian's father?
-
 
 Conversation:
 User: Give me summary of this book
